@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydrolytix - AI Water Management</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- AUTHENTICATION OVERLAY -->
+    <div id="auth-overlay" class="auth-overlay fade-in-up">
+        <div class="auth-box glass-panel">
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <i class="fa-solid fa-droplet text-cyan" style="font-size: 3.5rem;"></i>
+                <h2 id="auth-title" style="margin-top: 15px; color:#fff;">Welcome Back</h2>
+                <p class="text-muted text-sm">Sign in to access the Hydrolytix AI Command</p>
+            </div>
+            <form id="auth-form">
+                <div class="form-group hidden" id="name-group">
+                    <label>Full Name</label>
+                    <input type="text" id="auth-name" placeholder="John Doe">
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="auth-user" placeholder="admin" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="auth-pass" placeholder="••••••••" required>
+                </div>
+                <p id="auth-error" class="hidden text-red text-sm" style="margin-bottom: 15px; font-weight:600; text-align:center;"></p>
+                <button type="submit" class="btn-glow" style="width:100%;" id="auth-btn">Authenticate</button>
+            </form>
+            <div class="auth-switch">
+                <a href="#" id="toggle-auth" class="text-cyan">New user? Create an account</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOP NAVIGATION BAR -->
+    <nav class="top-nav hidden" id="main-nav">
+        <div class="nav-brand">
+            <i class="fa-solid fa-droplet text-cyan"></i> <span>Hydrolytix</span>
+        </div>
+        <ul class="nav-links">
+            <li class="active" onclick="switchTab('dashboard', this)"><i class="fa-solid fa-table-columns"></i> Dashboard</li>
+            <li onclick="switchTab('prediction', this)"><i class="fa-solid fa-wand-magic-sparkles"></i> Prediction</li>
+            <li onclick="switchTab('heatmap', this)"><i class="fa-solid fa-map-location-dot"></i> Heatmap</li>
+            <li onclick="switchTab('insights', this)"><i class="fa-solid fa-chart-line"></i> Insights</li>
+            <li onclick="switchTab('carbon', this)"><i class="fa-solid fa-leaf"></i> Carbon</li>
+            <li onclick="switchTab('chatbot', this)"><i class="fa-solid fa-robot"></i> Chatbot</li>
+        </ul>
+        <div class="nav-user" id="nav-user-panel">
+            <span id="nav-user-name" style="margin-right: 15px; font-weight: 500; color: #fff;"></span>
+            <button class="btn-outline-cyan text-sm" onclick="logout()" style="padding: 0.4rem 0.8rem;" title="Sign Out"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="app-container hidden" id="main-app">
+        
+        <!-- SECTION 1: DASHBOARD -->
+        <section id="dashboard" class="page-section active-section">
+            
+            <!-- Hero Banner -->
+            <div class="dashboard-hero fade-in-up">
+                <div class="hero-content">
+                    <h1 id="greeting-msg">Welcome to Hydrolytix Command</h1>
+                    <p>Your central intelligence hub for AI-driven campus water sustainability.</p>
+                    <div class="system-status">
+                        <span class="pulse-dot"></span> System Online & AI Modules Active
+                    </div>
+                </div>
+                <div class="hero-actions">
+                    <button class="btn-glow" onclick="switchTab('prediction', document.querySelectorAll('.nav-links li')[1])">
+                        <i class="fa-solid fa-bolt"></i> Run Simulation
+                    </button>
+                    <button class="btn-outline-cyan" onclick="switchTab('heatmap', document.querySelectorAll('.nav-links li')[2])">
+                        <i class="fa-solid fa-map"></i> View Campus Map
+                    </button>
+                </div>
+            </div>
+
+            <!-- The 4 Main Cards -->
+            <div class="dashboard-grid fade-in-up delay-1">
+                <div class="stat-card prime-card">
+                    <div class="icon-wrap bg-blue"><i class="fa-solid fa-water"></i></div>
+                    <div class="card-data">
+                        <p>Predicted Usage</p>
+                        <h2 id="dash-usage">-- L</h2>
+                    </div>
+                </div>
+                <div class="stat-card" id="risk-card-container">
+                    <div class="icon-wrap bg-risk"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="card-data">
+                        <p>Current Risk Level</p>
+                        <h2 id="dash-risk" class="val-risk">--</h2>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon-wrap bg-green"><i class="fa-solid fa-smog"></i></div>
+                    <div class="card-data">
+                        <p>Carbon Emissions</p>
+                        <h2 id="dash-carbon">-- kg CO₂</h2>
+                    </div>
+                </div>
+                <div class="stat-card tooltip-card">
+                    <div class="icon-wrap bg-purple"><i class="fa-solid fa-lightbulb"></i></div>
+                    <div class="card-data optimize-data">
+                        <p>AI Suggestion</p>
+                        <span id="dash-opt" class="text-cyan text-sm">Waiting for analysis...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Secondary Row: Weather & Alerts -->
+            <div class="dashboard-secondary-grid fade-in-up delay-2">
+                <!-- Weather Overview Widget -->
+                <div class="widget-box glass-panel weather-widget">
+                    <h3><i class="fa-solid fa-cloud-sun text-yellow"></i> Simulated Environment</h3>
+                    <p class="text-muted text-sm" style="margin-bottom:1rem;">Inputs from your latest prediction</p>
+                    <div class="weather-info">
+                        <div class="w-item">
+                            <span class="w-label">Temp</span>
+                            <strong id="w-temp" class="text-white">-- °C</strong>
+                        </div>
+                        <div class="w-item">
+                            <span class="w-label">Rainfall</span>
+                            <strong id="w-rain" class="text-blue">-- mm</strong>
+                        </div>
+                        <div class="w-item">
+                            <span class="w-label">Humidity</span>
+                            <strong id="w-hum" class="text-cyan">-- %</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Alerts / Log -->
+                <div class="widget-box glass-panel alerts-widget">
+                    <h3><i class="fa-solid fa-bell text-red"></i> Real-time Intel Feed</h3>
+                    <ul class="alerts-list" id="alerts-list">
+                        <li><i class="fa-solid fa-circle-check text-green"></i> System booted and synchronized successfully.</li>
+                        <li><i class="fa-solid fa-satellite-dish text-blue"></i> Awaiting new parameters from the Prediction module...</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div id="no-data-alert" class="alert-box fade-in-up delay-3">
+                <i class="fa-solid fa-circle-info"></i> Head over to the <strong>Prediction</strong> tab to breathe life into these panels!
+            </div>
+        </section>
+
+        <!-- SECTION 2: PREDICTION -->
+        <section id="prediction" class="page-section hidden">
+            <div class="section-header">
+                <h2>Predict Water Demand</h2>
+                <p>Adjust environmental parameters to simulate consumption</p>
+            </div>
+            
+            <div class="prediction-container">
+                <form id="prediction-form" class="glass-panel">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Occupancy</label>
+                            <input type="number" id="occupancy" value="300" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Temperature (°C)</label>
+                            <input type="number" id="temperature" step="0.1" value="30.0">
+                        </div>
+                        <div class="form-group">
+                            <label>Rainfall (mm)</label>
+                            <input type="number" id="rainfall" step="0.1" value="0.0">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Humidity (%)</label>
+                            <input type="number" id="humidity" step="0.1" value="65.0">
+                        </div>
+                        <div class="form-group">
+                            <label>Timetable Factor (0.0-1.0)</label>
+                            <input type="number" id="timetable_factor" step="0.01" value="0.95">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary" id="predict-btn">Generate AI Prediction</button>
+                    <div id="loading-txt" class="hidden text-cyan"><br><i class="fa-solid fa-circle-notch fa-spin"></i> Processing request...</div>
+                </form>
+                
+                <!-- Quick Results Snippet -->
+                <div class="quick-results glass-panel">
+                    <h3>Simulation Result</h3>
+                    <div class="res-circle">
+                        <span id="pred-res-usage">--</span>
+                        <small>Litres</small>
+                    </div>
+                    <button type="button" class="btn-outline-cyan" onclick="switchTab('dashboard', document.querySelector('.nav-links li:nth-child(1)'))" style="margin-top:1.5rem; width:100%;">View Dashboard</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: HEATMAP -->
+        <section id="heatmap" class="page-section hidden">
+            <div class="section-header">
+                <h2>Campus Water Heatmap</h2>
+                <p>Live spatial distribution and risk mapping across major buildings</p>
+            </div>
+            <div class="map-container glass-panel">
+                <div id="map"></div>
+                <!-- Map Legend -->
+                <div class="map-legend">
+                    <strong>Risk Indicators</strong>
+                    <div><span class="dot dot-green"></span> Low Risk</div>
+                    <div><span class="dot dot-yellow"></span> Medium Risk</div>
+                    <div><span class="dot dot-red"></span> High Risk</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: INSIGHTS -->
+        <section id="insights" class="page-section hidden">
+            <div class="section-header">
+                <h2>Historical Insights</h2>
+                <p>Analyze trends and patterns in consumption data</p>
+            </div>
+            
+            <div class="insights-stats-grid">
+                <div class="stat-box">
+                    <span>Peak Usage Day</span>
+                    <h3 id="ins-peak" class="text-cyan">--</h3>
+                </div>
+                <div class="stat-box">
+                    <span>Highest Usage</span>
+                    <h3 id="ins-high" class="text-blue">-- L</h3>
+                </div>
+                <div class="stat-box">
+                    <span>Average Usage</span>
+                    <h3 id="ins-avg" class="text-white">-- L</h3>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="glass-panel">
+                    <h3>Water Usage Trend</h3>
+                    <div class="chart-wrapper"><canvas id="usageChart"></canvas></div>
+                </div>
+                <div class="glass-panel">
+                    <h3>Weather vs Water Usage</h3>
+                    <div class="chart-wrapper"><canvas id="weatherChart"></canvas></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 5: CARBON -->
+        <section id="carbon" class="page-section hidden">
+            <div class="section-header">
+                <h2>Carbon & Sustainability</h2>
+                <p>Tracking the environmental impact of campus water operations</p>
+            </div>
+            
+            <div class="carbon-grid">
+                <div class="glass-panel carbon-card">
+                    <i class="fa-solid fa-bolt text-yellow large-icon"></i>
+                    <h3>Energy Consumption</h3>
+                    <h1 id="carb-energy">-- kWh</h1>
+                    <p class="text-muted">Estimated power required for pumping and treatment</p>
+                    
+                    <div class="progress-wrap">
+                        <div class="progress-info">
+                            <span>Usage Level</span>
+                            <span id="energy-pct-txt">0%</span>
+                        </div>
+                        <div class="progress-bg"><div class="progress-fill fill-yellow" id="energy-bar" style="width:0%"></div></div>
+                    </div>
+                </div>
+                
+                <div class="glass-panel carbon-card">
+                    <i class="fa-solid fa-smog text-red large-icon"></i>
+                    <h3>CO₂ Emissions</h3>
+                    <h1 id="carb-co2">-- kg</h1>
+                    <p class="text-muted">Associated carbon footprint from energy utilization</p>
+                    
+                    <div class="progress-wrap">
+                        <div class="progress-info">
+                            <span>Emission Level</span>
+                            <span id="co2-pct-txt">0%</span>
+                        </div>
+                        <div class="progress-bg"><div class="progress-fill fill-red" id="co2-bar" style="width:0%"></div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 6: CHATBOT -->
+        <section id="chatbot" class="page-section hidden">
+            <div class="section-header">
+                <h2>AI Assistant</h2>
+                <p>Ask me anything about the system data</p>
+            </div>
+            
+            <div class="chat-container glass-panel">
+                <div class="chat-box" id="chat-messages">
+                    <div class="msg ai">
+                        <strong><i class="fa-solid fa-robot"></i> System AI:</strong>
+                        <p>Welcome! Try asking about <b>"demand"</b>, <b>"risk"</b>, or <b>"peak day"</b>!</p>
+                    </div>
+                </div>
+                <div class="chat-input-row">
+                    <input type="text" id="chat-input" placeholder="Type your question..." onkeyup="if(event.key === 'Enter') handleChat()">
+                    <button class="btn-primary" onclick="handleChat()">Send</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
